@@ -419,7 +419,7 @@ class FA2(sp.Contract):
             self.add_flag("lazy_entry_points")
         if config.lazy_entry_points_multiple:
             self.add_flag("lazy_entry_points_multiple")
-        self.exception_optimization_level = "DefaultLine"
+        self.exception_optimization_level = "Default-Line"
         self.init(
             paused = False,
             ledger =
@@ -600,6 +600,7 @@ class FA2(sp.Contract):
 ##  [documentation](https://www.smartpy.io/dev/reference.html#_in_a_test_scenario_)).
 class View_consumer(sp.Contract):
     def __init__(self, contract):
+        print(contract.__class__)
         self.contract = contract
         self.init(last_sum = 0,
                   last_acc = "",
@@ -764,13 +765,13 @@ def add_test(config, is_default = True):
         consumer = View_consumer(c1)
         scenario += consumer
         scenario.p("Consumer virtual address: "
-                   + sp.contract_address(consumer).export())
+                   + consumer.address.export())
         scenario.h2("Balance-of.")
         def arguments_for_balance_of(receiver, reqs):
             return (sp.record(
                 callback = sp.contract(
                     Balance_of.response_type(),
-                    sp.contract_address(receiver),
+                    receiver.address,
                     entry_point = "receive_balances").open_some(),
                 requests = reqs))
         scenario += c1.balance_of(arguments_for_balance_of(consumer, [
@@ -785,7 +786,7 @@ def add_test(config, is_default = True):
         scenario += c1.token_metadata_registry(
                 sp.contract(
                     sp.TAddress,
-                    sp.contract_address(consumer),
+                    consumer.address,
                     entry_point = "receive_metadata_registry").open_some())
         def check_metadata_list(l):
             res = sp.local("toks", sp.string(""))
@@ -807,7 +808,7 @@ def add_test(config, is_default = True):
                 scenario += c1.permissions_descriptor(
                     sp.contract(
                         c1.permissions_descriptor_.get_type(),
-                        sp.contract_address(consumer),
+                        consumer.address,
                         entry_point = "receive_permissions_descriptor"
                     ).open_some())
                 scenario.verify(consumer.data.operator_support == False)
@@ -967,7 +968,7 @@ def add_test(config, is_default = True):
                  scenario += c1.permissions_descriptor(
                      sp.contract(
                          c1.permissions_descriptor_.get_type(),
-                         sp.contract_address(consumer),
+                         consumer.address,
                          entry_point = "receive_permissions_descriptor").open_some())
                  scenario.verify(consumer.data.operator_support == True)
             scenario.table_of_contents()
