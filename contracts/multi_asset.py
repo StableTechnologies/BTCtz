@@ -420,6 +420,7 @@ class FA2(sp.Contract):
         if config.lazy_entry_points_multiple:
             self.add_flag("lazy_entry_points_multiple")
         self.exception_optimization_level = "Default-Line"
+        self.add_flag("initial-cast")
         self.init(
             paused = False,
             ledger =
