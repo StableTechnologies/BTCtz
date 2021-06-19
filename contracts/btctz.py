@@ -17,7 +17,7 @@ import smartpy as sp
 class FA2_config:
     def __init__(self,
                  debug_mode                   = False,
-                 single_asset                 = False,
+                 single_asset                 = True,
                  non_fungible                 = False,
                  add_mutez_transfer           = False,
                  readable                     = True,
