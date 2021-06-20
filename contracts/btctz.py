@@ -454,20 +454,24 @@ class FA2(sp.Contract):
             sp.verify(~ self.token_id_set.contains(self.data.all_tokens,
                                                    params.token_id),
                       "NFT-asset: cannot mint twice same token")
+
         user = self.ledger_key.make(params.address, params.token_id)
+
         self.token_id_set.add(self.data.all_tokens, params.token_id)
+
         sp.if self.data.ledger.contains(user):
             self.data.ledger[user].balance += params.amount
         sp.else:
             self.data.ledger[user] = Ledger_value.make(params.amount)
+
         sp.if self.data.tokens.contains(params.token_id):
              pass
         sp.else:
              self.data.tokens[params.token_id] = sp.record(
                      token_id = params.token_id,
                      symbol = params.symbol,
-                     name = "", # Consered useless here
-                     decimals = 0,
+                     name = params.name,
+                     decimals = params.decimals,
                      extras = sp.map()
                  )
 
@@ -512,7 +516,7 @@ class FA2(sp.Contract):
                          self.data.ledger[to_user] = Ledger_value.make(tx.amount)
                 sp.else:
                     pass
-    
+
     @sp.entry_point
     def balance_of(self, params):
         # paused may mean that balances are meaningless:
@@ -589,7 +593,6 @@ class FA2(sp.Contract):
         else:
             sp.failwith(self.error_message.operators_unsupported())
 
-
 ## ## Tests
 ##
 ## ### Auxiliary Consumer Contract
@@ -661,6 +664,8 @@ def add_test(config, is_default = True):
         scenario += c1.mint(address = alice.address,
                             amount = 100,
                             symbol = 'TK0',
+                            name = 'Token 0',
+                            decimals = 8,
                             token_id = 0).run(sender = admin)
         scenario.h2("Transfers Alice -> Bob")
         scenario += c1.transfer(
@@ -700,10 +705,14 @@ def add_test(config, is_default = True):
         scenario += c1.mint(address = bob.address,
                             amount = 100,
                             symbol = 'TK1',
+                            name = 'Token 1',
+                            decimals = 0,
                             token_id = 1).run(sender = admin)
         scenario += c1.mint(address = bob.address,
                             amount = 200,
                             symbol = 'TK2',
+                            name = 'Token 2',
+                            decimals = 0,
                             token_id = 2).run(sender = admin)
         scenario.h3("Multi-token Transfer Bob -> Alice")
         scenario += c1.transfer(
