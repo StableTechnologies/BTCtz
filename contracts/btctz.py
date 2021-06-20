@@ -476,6 +476,22 @@ class FA2(sp.Contract):
                  )
 
     @sp.entry_point
+    def burn(self, params):
+        sp.set_type(params.amount, sp.TNat)
+
+        sp.verify(sp.sender == self.data.administrator)
+
+        if self.config.single_asset:
+            sp.verify(params.token_id == 0, "single-asset: token-id <> 0")
+
+        user = self.ledger_key.make(params.address, params.token_id)
+
+        sp.verify(self.data.ledger.contains(user), "missing holder record")
+        sp.verify(self.data.ledger[user].balance >= params.amount, "insufficient holder balance")
+
+        self.data.ledger[user].balance = sp.as_nat(self.data.ledger[user].balance - params.amount)
+
+    @sp.entry_point
     def transfer(self, params):
         sp.verify( ~self.data.paused )
         sp.set_type(params, self.batch_transfer.get_type())
@@ -651,6 +667,8 @@ def add_test(config, is_default = True):
         admin = sp.test_account("Administrator")
         alice = sp.test_account("Alice")
         bob   = sp.test_account("Robert")
+        clara = sp.test_account("Clara")
+        david  = sp.test_account("David")
         # Let's display the accounts:
         scenario.h2("Accounts")
         scenario.show([admin, alice, bob])
@@ -688,7 +706,7 @@ def add_test(config, is_default = True):
                                         sp.record(to_ = bob.address,
                                                   amount = 10,
                                                   token_id = 0),
-                                        sp.record(to_ = bob.address,
+                                        sp.record(to_ = clara.address,
                                                   amount = 11,
                                                   token_id = 0)
                                     ])
@@ -698,9 +716,29 @@ def add_test(config, is_default = True):
             == 90 - 10 - 11)
         scenario.verify(
             c1.data.ledger[c1.ledger_key.make(bob.address, 0)].balance
-            == 10 + 10 + 11)
+            == 10 + 10)
+        scenario.verify(
+            c1.data.ledger[c1.ledger_key.make(clara.address, 0)].balance
+            == 11)
         if config.single_asset:
             return
+
+        scenario.h2("Single-asset burn")
+        scenario.p("The administrator burns 1 token from Bob.")
+        scenario += c1.burn(address = bob.address, token_id = 0, amount = 1).run(sender = admin)
+
+        scenario.p("The administrator fails to burn 100 tokens from Clara.")
+        scenario += c1.burn(address = clara.address, token_id = 0, amount = 100).run(sender = admin, valid = False)
+
+        scenario.p("The administrator fails to burn 100 tokens from David.")
+        scenario += c1.burn(address = david.address, token_id = 0, amount = 100).run(sender = admin, valid = False)
+
+        scenario.p("The Alice fails to burn a token from Bob.")
+        scenario += c1.burn(address = bob.address, token_id = 0, amount = 1).run(sender = alice, valid = False)
+
+        scenario.p("The Alice fails to burn 10 tokens from herself.")
+        scenario += c1.burn(address = alice.address, token_id = 0, amount = 10).run(sender = alice, valid = False)
+
         scenario.h2("More Token Types")
         scenario += c1.mint(address = bob.address,
                             amount = 100,
