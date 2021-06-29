@@ -1,0 +1,26 @@
+{
+    "name": "btctz-token-deployment",
+    "version": "0.0.1",
+    "description": "BTCtz token deployment script",
+    "scripts": {
+        "postinstall": "npm run build",
+        "build": "tsc",
+        "start": "node dist/index.js"
+    },
+    "license": "UNLICENSED",
+    "engines": {
+        "node": "14.17.1",
+        "npm": "6.14.13"
+    },
+    "homepage": "https://github.com/StableTechnologies/BTCtz",
+    "author": { "name": "Mike Radin", "url" : "https://github.com/anonymoussprocket" },
+    "dependencies": {
+        "conseiljs": "5.0.9-beta.2",
+        "conseiljs-softsigner": "5.0.4-1",
+        "loglevel": "1.7.1",
+        "node-fetch": "2.6.1"
+    },
+    "devDependencies": {
+        "typescript": "4.3.4"
+    }
+}
