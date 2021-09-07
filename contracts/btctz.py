@@ -11,6 +11,8 @@ class FA2ErrorMessage:
     """This error is thrown if not the owner is performing an action that he/she shouldn't"""
     NOT_OPERATOR = "{}NOT_OPERATOR".format(PREFIX)
     """This error is thrown if neither token owner nor permitted operators are trying to transfer an amount"""
+    NOT_ADMIN = "{}NOT_ADMIN".format(PREFIX)
+    TOKEN_PAUSED = "{}TOKEN_PAUSED".format(PREFIX)
 
 class TokenMetadata:
     """Token metadata object as per FA2 standard"""
@@ -249,6 +251,8 @@ class BaseFA2(sp.Contract):
         sp.set_type(transfers, Transfer.get_batch_type())
         with sp.for_('transfer', transfers) as transfer:
             with sp.for_('tx', transfer.txs) as tx:
+                sp.verify(~self.is_paused(tx.token_id), message=FA2ErrorMessage.TOKEN_PAUSED)
+
                 from_user_ledger_key = sp.local("from_user_ledger_key", LedgerKey.make(tx.token_id, transfer.from_))
                 to_user_ledger_key = sp.local("to_user_ledger_key", LedgerKey.make(tx.token_id, tx.to_))
                 operator_key = OperatorKey.make(tx.token_id, transfer.from_, sp.sender)
@@ -268,7 +272,7 @@ class BaseFA2(sp.Contract):
 
     @sp.entry_point
     def update_operators(self, update_operators):
-        """As per FA2 standard, allows a token owner to set an operator who will be allowed to perform transfers on her/his behalf
+        """As per FA2 standard, allows a token owner to set an operator who will be allowed to perform transfers on their behalf
 
         Pre: update_operator.add_operator.owner == sp.sender
         Pre: update_operator.remove_operator.owner == sp.sender
@@ -279,6 +283,9 @@ class BaseFA2(sp.Contract):
             update_operators (sp.list(UpdateOperator)): batch update operator type
         """
         sp.set_type(update_operators, UpdateOperator.get_batch_type())
+
+        sp.verify(~self.is_paused(tx.token_id), message=FA2ErrorMessage.TOKEN_PAUSED)
+
         with sp.for_('update_operator', update_operators) as update_operator:
             with update_operator.match_cases() as argument:
                 with argument.match("add_operator") as update:
@@ -313,6 +320,9 @@ class BaseFA2(sp.Contract):
 
         sp.transfer(responses.value, sp.mutez(0), balance_of_request.callback)
 
+    def is_paused(self, token_id):
+        return sp.bool(False)
+
 class AdministrableMixin():
     """Mixin used to compose andministrable functionality of a contract. Still requires the inheriting contract to define the appropriate storage.
     """
@@ -326,7 +336,7 @@ class AdministrableMixin():
             token_id (sp.nat): token id to check for admin
         """
         administrator_ledger_key = LedgerKey.make(token_id, sp.sender)
-        sp.verify(self.data.administrators.contains(administrator_ledger_key), message="NOT_ADMIN")
+        sp.verify(self.data.administrators.contains(administrator_ledger_key), message=FA2ErrorMessage.NOT_ADMIN)
 
     @sp.entry_point
     def set_administrator(self, token_id, administrator_to_set):
@@ -387,8 +397,9 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
             dict: initial storage of the contract
         """
         storage = super().get_init_storage()
-        storage['administrators'] = sp.big_map(l=self.administrators,
-            tkey=LedgerKey.get_type(), tvalue=sp.TUnit)
+        storage['administrators'] = sp.big_map(l=self.administrators, tkey=LedgerKey.get_type(), tvalue=sp.TUnit)
+        storage['pause'] = sp.big_map(l=self.pause, tkey=sp.TNat, tvalue=sp.TBool)
+
         return storage
 
     def __init__(self, administrators={}):
@@ -398,6 +409,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
             administrators (dict, optional): the initial list of administrator to allow. Defaults to {}.
         """
         self.administrators = administrators
+        self.pause = {}
         self.add_flag("initial-cast")
         super().__init__()
 
@@ -431,7 +443,10 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
             recipient_token_amount (RecipientTokenAmount): a record that has owner, token_amount and token_id
         """
         sp.set_type(recipient_token_amount, RecipientTokenAmount.get_type())
+
+        sp.verify(self.data.token_metadata.contains(recipient_token_amount.token_id), message=FA2ErrorMessage.TOKEN_UNDEFINED)
         self.verify_is_admin(recipient_token_amount.token_id)
+
         owner_ledger_key = LedgerKey.make(recipient_token_amount.token_id, recipient_token_amount.owner)
         self.data.ledger[owner_ledger_key] = self.data.ledger.get(
             owner_ledger_key, 0) + recipient_token_amount.token_amount
@@ -457,6 +472,18 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         with sp.if_(self.data.ledger.get(owner_ledger_key, sp.nat(0)) == sp.nat(0)):
             del self.data.ledger[owner_ledger_key]
 
+    @sp.entry_point
+    def pause(self, token_id, pause):
+        sp.set_type(token_id, sp.TNat)
+        sp.set_type(pause, sp.TBool)
+
+        sp.verify(self.data.token_metadata.contains(token_id), message=FA2ErrorMessage.TOKEN_UNDEFINED)
+        self.verify_is_admin(token_id)
+        self.data.pause[token_id] = pause
+
+    def is_paused(self, token_id):
+        return self.data.pause[token_id]
+
 @sp.add_test("FA2 Token Tests")
 def test():
     scenario = sp.test_scenario()
@@ -475,17 +502,49 @@ def test():
     scenario += token
 
     scenario.h2("Contract Metadata")
-    metadata = sp.big_map({ "" : sp.utils.bytes_of_string("ipfs://") }, tkey = sp.TString, tvalue = sp.TBytes)
+    metadata = sp.map({"" : sp.utils.bytes_of_string("ipfs://")}, tkey = sp.TString, tvalue = sp.TBytes)
 
     scenario.h2("Token Metadata")
-    token_metadata = sp.record(token_id=sp.nat(0), token_info=sp.map({ "" : sp.utils.bytes_of_string("ipfs://") }, tkey = sp.TString, tvalue = sp.TBytes))
+    token_info = token_info=sp.map({
+        "" : sp.utils.bytes_of_string("ipfs://"),
+        "symbol": sp.utils.bytes_of_string("BTCtz"),
+        "name": sp.utils.bytes_of_string("BitcoinTez"),
+        "decimals": sp.utils.bytes_of_string("8")
+        }, tkey = sp.TString, tvalue = sp.TBytes)
+    token_metadata = sp.record(token_id=sp.nat(0), token_info=token_info)
     scenario += token.set_token_metadata(token_metadata).run(sender=admin)
 
     scenario.h2("Mint")
+
+    scenario.h3("Admin mints 1000 token 0 to Alice")
     scenario += token.mint(RecipientTokenAmount.make(alice.address, 0, 1000)).run(sender=admin)
 
+    scenario.h3("Admin mints 1000 token 0 to Robert")
+    scenario += token.mint(RecipientTokenAmount.make(bob.address, 0, 1000)).run(sender=admin)
+
+    scenario.h3("Cindy fails to mint")
+    scenario += token.mint(RecipientTokenAmount.make(cindy.address, 0, 1000)).run(sender=cindy, valid=False)
+
+    scenario.h3("Admin fails to mint token 1")
+    scenario += token.mint(RecipientTokenAmount.make(bob.address, 1, 1000)).run(sender=admin, valid=False)
+
     scenario.h2("Burn")
-    #scenario += token.burn().run(sender=admin)
+
+    scenario.h3("Admin burns 500 from Robert")
+    scenario += token.burn(RecipientTokenAmount.make(bob.address, 0, 500)).run(sender=admin)
+
+    scenario.h3("Cindy fails to burn")
+    scenario += token.burn(RecipientTokenAmount.make(bob.address, 0, 500)).run(sender=cindy, valid=False)
 
     scenario.h2("Transfer")
     #scenario += token.transfer().run(sender=alice)
+
+    scenario.h2("Operators")
+    scenario.h3("Alice adds Robert as operator for token 0")
+    scenario.h3("Robert pulls 500 of token 0 from Alice")
+    scenario.h3("Cindy fails to pull 500 of token 0 from Alice")
+    scenario.h3("Cindy fails to set operator on Alice")
+
+    scenario.h2("Pause")
+    scenario.h3("Admin pauses token 0")
+    scenario.h3("Alice fails to transfer token 0 balance")
