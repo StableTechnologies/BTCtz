@@ -284,21 +284,19 @@ class BaseFA2(sp.Contract):
         """
         sp.set_type(update_operators, UpdateOperator.get_batch_type())
 
-        sp.verify(~self.is_paused(tx.token_id), message=FA2ErrorMessage.TOKEN_PAUSED)
-
         with sp.for_('update_operator', update_operators) as update_operator:
             with update_operator.match_cases() as argument:
                 with argument.match("add_operator") as update:
-                    sp.verify(update.owner == sp.sender,
-                              message=FA2ErrorMessage.NOT_OWNER)
-                    operator_key = OperatorKey.make(
-                        update.token_id, update.owner, update.operator)
+                    sp.verify(update.owner == sp.sender, message=FA2ErrorMessage.NOT_OWNER)
+                    sp.verify(~self.is_paused(update.token_id), message=FA2ErrorMessage.TOKEN_PAUSED)
+
+                    operator_key = OperatorKey.make(update.token_id, update.owner, update.operator)
                     self.data.operators[operator_key] = sp.unit
                 with argument.match("remove_operator") as update:
-                    sp.verify(update.owner == sp.sender,
-                              message=FA2ErrorMessage.NOT_OWNER)
-                    operator_key = OperatorKey.make(
-                        update.token_id, update.owner, update.operator)
+                    sp.verify(update.owner == sp.sender, message=FA2ErrorMessage.NOT_OWNER)
+                    sp.verify(~self.is_paused(update.token_id), message=FA2ErrorMessage.TOKEN_PAUSED)
+
+                    operator_key = OperatorKey.make(update.token_id, update.owner, update.operator)
                     del self.data.operators[operator_key]
 
     @sp.entry_point
@@ -399,10 +397,11 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         storage = super().get_init_storage()
         storage['administrators'] = sp.big_map(l=self.administrators, tkey=LedgerKey.get_type(), tvalue=sp.TUnit)
         storage['pause'] = sp.big_map(l=self.pause, tkey=sp.TNat, tvalue=sp.TBool)
+        storage['metadata'] = sp.big_map(l=self.metadata, tkey=sp.TString, tvalue=sp.TBytes)
 
         return storage
 
-    def __init__(self, administrators={}):
+    def __init__(self, administrators={}, metadata):
         """The storage can be initialized with a list of administrators
 
         Args:
@@ -410,6 +409,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         """
         self.administrators = administrators
         self.pause = {}
+        self.metadata = metadata
         self.add_flag("initial-cast")
         super().__init__()
 
@@ -498,7 +498,8 @@ def test():
     scenario.show([admin, alice, bob, cindy])
 
     scenario.h2("Contract")
-    token = AdministrableFA2({LedgerKey.make(0, admin.address):sp.unit})
+    metadata = { "" : sp.utils.bytes_of_string("ipfs://") }
+    token = AdministrableFA2({ LedgerKey.make(0, admin.address): sp.unit }, metadata)
     scenario += token
 
     scenario.h2("Contract Metadata")
@@ -544,6 +545,7 @@ def test():
     scenario.h3("Robert pulls 500 of token 0 from Alice")
     scenario.h3("Cindy fails to pull 500 of token 0 from Alice")
     scenario.h3("Cindy fails to set operator on Alice")
+    scenario.h3("Admin fails to set operator on Alice")
 
     scenario.h2("Pause")
     scenario.h3("Admin pauses token 0")
