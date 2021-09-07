@@ -257,10 +257,8 @@ class BaseFA2(sp.Contract):
                 to_user_ledger_key = sp.local("to_user_ledger_key", LedgerKey.make(tx.token_id, tx.to_))
                 operator_key = OperatorKey.make(tx.token_id, transfer.from_, sp.sender)
 
-                sp.verify(self.data.ledger.get(from_user_ledger_key.value, sp.nat(0))
-                        >= tx.amount, message=FA2ErrorMessage.INSUFFICIENT_BALANCE)
-                sp.verify((sp.sender == transfer.from_) | self.data.operators.contains(
-                    operator_key), message=FA2ErrorMessage.NOT_OWNER)
+                sp.verify(self.data.ledger.get(from_user_ledger_key.value, sp.nat(0)) >= tx.amount, message=FA2ErrorMessage.INSUFFICIENT_BALANCE)
+                sp.verify((sp.sender == transfer.from_) | self.data.operators.contains(operator_key), message=FA2ErrorMessage.NOT_OWNER)
                 with sp.if_(tx.amount>0):
                     self.data.ledger[from_user_ledger_key.value] = sp.as_nat(
                         self.data.ledger[from_user_ledger_key.value] - tx.amount)
@@ -473,7 +471,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
             del self.data.ledger[owner_ledger_key]
 
     @sp.entry_point
-    def pause(self, token_id, pause):
+    def pause_token(self, token_id, pause):
         sp.set_type(token_id, sp.TNat)
         sp.set_type(pause, sp.TBool)
 
@@ -482,6 +480,11 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         self.data.pause[token_id] = pause
 
     def is_paused(self, token_id):
+        sp.set_type(token_id, sp.TNat)
+
+        sp.if ~self.data.pause.contains(token_id):
+            return sp.bool(False)
+
         return self.data.pause[token_id]
 
 @sp.add_test("FA2 Token Tests")
@@ -538,15 +541,24 @@ def test():
     scenario += token.burn(RecipientTokenAmount.make(bob.address, 0, 500)).run(sender=cindy, valid=False)
 
     scenario.h2("Transfer")
-    #scenario += token.transfer().run(sender=alice)
+
+    scenario.h3("Alice transfers 1 of token 0 to Robert")
+    transfer0 = sp.record(to_=bob.address, token_id=sp.nat(0), amount=sp.nat(1))
+    scenario += token.transfer([sp.record(from_=alice.address, txs=[transfer0])]).run(sender=alice)
 
     scenario.h2("Operators")
     scenario.h3("Alice adds Robert as operator for token 0")
     scenario.h3("Robert pulls 500 of token 0 from Alice")
     scenario.h3("Cindy fails to pull 500 of token 0 from Alice")
     scenario.h3("Cindy fails to set operator on Alice")
+
     scenario.h3("Admin fails to set operator on Alice")
+    operator_update4 = sp.variant("add_operator", sp.record(owner=alice.address, operator=admin.address, token_id=sp.nat(0)))
+    scenario += token.update_operators([operator_update4]).run(sender = admin, valid=False)
 
     scenario.h2("Pause")
+
     scenario.h3("Admin pauses token 0")
+    scenario += token.pause_token(token_id=sp.nat(0), pause=True).run(sender=admin)
+
     scenario.h3("Alice fails to transfer token 0 balance")
