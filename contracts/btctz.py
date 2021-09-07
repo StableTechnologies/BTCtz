@@ -1,10 +1,4 @@
-# https://github.com/youves-com/youves-smart-contract/blob/main/tracker/fa2.py
-# commit 3f2e126 on Jul 19, 2021
-
 import smartpy as sp
-
-import tracker.constants as Constants
-import tracker.errors as Errors
 
 class FA2ErrorMessage:
     """Static enum used for the FA2 related errors, using the `FA2_` prefix"""
@@ -21,10 +15,10 @@ class FA2ErrorMessage:
 class TokenMetadata:
     """Token metadata object as per FA2 standard"""
     def get_type():
-        """Returns a single token metadata type, layouted as per token metadata
+        """Returns a single token metadata type, with layout as per token metadata
 
         Returns:
-            sp.TRecord: single token metadata type, layouted
+            sp.TRecord: single token metadata type, with layout
         """
         return sp.TRecord(token_id=sp.TNat, token_info=sp.TMap(sp.TString, sp.TBytes)).layout(("token_id", "token_info"))
 
@@ -39,10 +33,10 @@ class TokenMetadata:
 class Transfer:
     """Transfer object as per FA2 standard"""
     def get_type():
-        """Returns a single transfer type, layouted
+        """Returns a single transfer type, with layout
 
         Returns:
-            sp.TRecord: single transfer type, layouted
+            sp.TRecord: single transfer type, with layout
         """
         tx_type = sp.TRecord(to_=sp.TAddress,
                              token_id=sp.TNat,
@@ -80,7 +74,7 @@ class UpdateOperator():
         """Parameters included in the update operator request
 
         Returns:
-            sp.TRecord: layouted to match the FA2 standard
+            sp.TRecord: with layout to match the FA2 standard
         """
         return sp.TRecord(
             owner=sp.TAddress,
@@ -89,10 +83,10 @@ class UpdateOperator():
         ).layout(("owner", ("operator", "token_id")))
 
     def get_type():
-        """Returns a single update operator type, layouted
+        """Returns a single update operator type, with layout
 
         Returns:
-            sp.TVariant: single update operator type, layouted
+            sp.TVariant: single update operator type, with layout
         """
         return sp.TVariant(
             add_operator=UpdateOperator.get_operator_param_type(),
@@ -109,10 +103,10 @@ class UpdateOperator():
 class BalanceOf:
     """Balance of object as per FA2 standard"""
     def get_response_type():
-        """Returns the balance_of reponse type, layouted
+        """Returns the balance_of response type, with layout
 
         Returns:
-            sp.TRecord: balance_of reponse type, layouted as per FA2
+            sp.TRecord: balance_of response type, with layout as per FA2
         """
         return sp.TList(
             sp.TRecord(
@@ -120,10 +114,10 @@ class BalanceOf:
                 balance=sp.TNat).layout(("request", "balance")))
 
     def get_type():
-        """Returns the balance_of type, layouted
+        """Returns the balance_of type, with layout
 
         Returns:
-            sp.TRecord: balance_of type, layouted as per FA2
+            sp.TRecord: balance_of type, with layout as per FA2
         """
         return sp.TRecord(
             requests=sp.TList(LedgerKey.get_type()),
@@ -138,17 +132,17 @@ class BalanceOf:
             callback (sp.TContract): the callback to be used to return the balance_of response
 
         Returns:
-            sp.record: balance_of request payload for a signle ledger key, typed.
+            sp.record: balance_of request payload for a single ledger key, typed.
         """
         return sp.set_type_expr(sp.record(requests=[ledger_key], callback=callback), BalanceOf.get_type())
 
 class LedgerKey:
     """Ledger key used when looking up balances"""
     def get_type():
-        """Returns a single ledger key type, layouted
+        """Returns a single ledger key type, with layout
 
         Returns:
-            sp.TRecord: layouted type of a ledger lookup key
+            sp.TRecord: type of a ledger lookup key, with layout
         """
         return sp.TRecord(owner=sp.TAddress, token_id=sp.TNat).layout(("owner", "token_id"))
 
@@ -167,10 +161,10 @@ class LedgerKey:
 class OperatorKey:
     """Operator key used when looking up operation permissions"""
     def get_type():
-        """Returns a single operator key type, layouted
+        """Returns a single operator key type, with layout
 
         Returns:
-            sp.TRecord: single operator key type, layouted
+            sp.TRecord: single operator key type, with layout
         """
         return sp.TRecord(token_id=sp.TNat, owner=sp.TAddress, operator=sp.TAddress).layout(("owner", ("operator", "token_id")))
 
@@ -237,7 +231,7 @@ class BaseFA2(sp.Contract):
         )
 
     def __init__(self):
-        """Has no constructor parameters, initialises the storage
+        """Has no constructor parameters, initializes the storage
         """
         self.init(**self.get_init_storage())
 
@@ -302,7 +296,7 @@ class BaseFA2(sp.Contract):
 
     @sp.entry_point
     def balance_of(self, balance_of_request):
-        """This entrypoint as per FA2 standard, takes balance_of requests and reponds on the provided callback contract.
+        """This entrypoint as per FA2 standard, takes balance_of requests and responds on the provided callback contract.
 
         Args:
             balance_of_request (BalanceOf): the request
@@ -320,7 +314,7 @@ class BaseFA2(sp.Contract):
         sp.transfer(responses.value, sp.mutez(0), balance_of_request.callback)
 
 class AdministrableMixin():
-    """Mixin used to compose andministrable functionality of a contract. Still requires the inerhiting contract to define the apropiate storage.
+    """Mixin used to compose andministrable functionality of a contract. Still requires the inheriting contract to define the appropriate storage.
     """
 
     @sp.sub_entry_point
@@ -332,7 +326,7 @@ class AdministrableMixin():
             token_id (sp.nat): token id to check for admin
         """
         administrator_ledger_key = LedgerKey.make(token_id, sp.sender)
-        sp.verify(self.data.administrators.contains(administrator_ledger_key), message=Errors.NOT_ADMIN)
+        sp.verify(self.data.administrators.contains(administrator_ledger_key), message="NOT_ADMIN")
 
     @sp.entry_point
     def set_administrator(self, token_id, administrator_to_set):
@@ -372,7 +366,7 @@ class AdministrableMixin():
     @sp.entry_point
     def execute(self, execution_payload):
         """Only an admin for token_id 0 can call this entrypoint. It executes in the name of the contract the lambda stored in the execution payload.
-        This is used for upgreadability/migrations.
+        This is used for upgradeability/migrations.
         Pre: verify_is_admin(0)
         Post: push execution_payload on execution stack
 
@@ -380,7 +374,7 @@ class AdministrableMixin():
             execution_payload (sp.TLambda(sp.TUnit, sp.TList(sp.TOperation))): the lambda to execute
         """
         sp.set_type(execution_payload, sp.TLambda(sp.TUnit, sp.TList(sp.TOperation)))
-        self.verify_is_admin(Constants.DEFAULT_TOKEN_ID)
+        self.verify_is_admin(sp.nat(0))
         sp.add_operations(execution_payload(sp.unit).rev())
 
 class AdministrableFA2(BaseFA2, AdministrableMixin):
@@ -398,7 +392,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         return storage
 
     def __init__(self, administrators={}):
-        """The storage can be initialised with a list of administrators
+        """The storage can be initialized with a list of administrators
 
         Args:
             administrators (dict, optional): the initial list of administrator to allow. Defaults to {}.
@@ -420,7 +414,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         """
         sp.set_type(token_metadata, TokenMetadata.get_type())
 
-        self.verify_is_admin(Constants.DEFAULT_TOKEN_ID)
+        self.verify_is_admin(sp.nat(0))
         with sp.if_(~self.data.token_metadata.contains(token_metadata.token_id)):
             self.data.token_metadata[token_metadata.token_id] = token_metadata
             self.data.administrators[LedgerKey.make(token_metadata.token_id, sp.sender)] = sp.unit
@@ -428,7 +422,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
 
     @sp.entry_point
     def mint(self, recipient_token_amount):
-        """Allows to mint new tokens to the specified reciepient address, only a token administrator can do this
+        """Allows to mint new tokens to the specified recipient address, only a token administrator can do this
         Pre: verify_is_admin(recipient_token_amount.token_id)
         Post: storage.ledger[LedgerKey(recipient_token_amount.owner, recipient_token_amount.token_id)] += recipient_token_amount.token_amount
         Post: storage.total_supply[recipient_token_amount.token_id] += recipient_token_amount.token_amount
@@ -445,7 +439,7 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
 
     @sp.entry_point
     def burn(self, recipient_token_amount):
-        """Allows to mint new tokens to the specified reciepient address, only a token administrator can do this
+        """Allows to mint new tokens to the specified recipient address, only a token administrator can do this
         Pre: verify_is_admin(recipient_token_amount.token_id)
         Pre: storage.ledger[LedgerKey(recipient_token_amount.owner, recipient_token_amount.token_id)] >= recipient_token_amount.token_amount
         Post: storage.ledger[LedgerKey(recipient_token_amount.owner, recipient_token_amount.token_id)] -= recipient_token_amount.token_amount
@@ -462,3 +456,36 @@ class AdministrableFA2(BaseFA2, AdministrableMixin):
         self.data.total_supply[recipient_token_amount.token_id] =  sp.as_nat(self.data.total_supply[recipient_token_amount.token_id]-recipient_token_amount.token_amount)
         with sp.if_(self.data.ledger.get(owner_ledger_key, sp.nat(0)) == sp.nat(0)):
             del self.data.ledger[owner_ledger_key]
+
+@sp.add_test("FA2 Token Tests")
+def test():
+    scenario = sp.test_scenario()
+    scenario.h1("FA2 Token Tests")
+    scenario.table_of_contents()
+
+    admin = sp.test_account("Administrator")
+    alice = sp.test_account("Alice")
+    bob = sp.test_account("Robert")
+    cindy = sp.test_account("Cynthia")
+    scenario.h2("Accounts")
+    scenario.show([admin, alice, bob, cindy])
+
+    scenario.h2("Contract")
+    token = AdministrableFA2({LedgerKey.make(0, admin.address):sp.unit})
+    scenario += token
+
+    scenario.h2("Contract Metadata")
+    metadata = sp.big_map({ "" : sp.utils.bytes_of_string("ipfs://") }, tkey = sp.TString, tvalue = sp.TBytes)
+
+    scenario.h2("Token Metadata")
+    token_metadata = sp.record(token_id=sp.nat(0), token_info=sp.map({ "" : sp.utils.bytes_of_string("ipfs://") }, tkey = sp.TString, tvalue = sp.TBytes))
+    scenario += token.set_token_metadata(token_metadata).run(sender=admin)
+
+    scenario.h2("Mint")
+    scenario += token.mint(RecipientTokenAmount.make(alice.address, 0, 1000)).run(sender=admin)
+
+    scenario.h2("Burn")
+    #scenario += token.burn().run(sender=admin)
+
+    scenario.h2("Transfer")
+    #scenario += token.transfer().run(sender=alice)
