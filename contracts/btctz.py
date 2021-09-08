@@ -501,16 +501,13 @@ def test():
     scenario.show([admin, alice, bob, cindy])
 
     scenario.h2("Contract")
-    metadata = { "" : sp.utils.bytes_of_string("ipfs://") }
+    metadata = { "" : sp.utils.bytes_of_string("ipfs://QmPCcZe6mH6qcx9jrkH3khBe9MGbjUggaP9rL5Pme8NQWh") }
     token = AdministrableFA2({ LedgerKey.make(0, admin.address): sp.unit }, metadata)
     scenario += token
 
-    scenario.h2("Contract Metadata")
-    metadata = sp.map({"" : sp.utils.bytes_of_string("ipfs://")}, tkey = sp.TString, tvalue = sp.TBytes)
-
     scenario.h2("Token Metadata")
     token_info = token_info=sp.map({
-        "" : sp.utils.bytes_of_string("ipfs://"),
+        "" : sp.utils.bytes_of_string("ipfs://QmQMWgwv1BnFG46JVhwFyiSwudPaaNRh3nFqvT9Wab3qLV"),
         "symbol": sp.utils.bytes_of_string("BTCtz"),
         "name": sp.utils.bytes_of_string("BitcoinTez"),
         "decimals": sp.utils.bytes_of_string("8")
