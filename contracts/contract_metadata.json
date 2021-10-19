@@ -1,0 +1,9 @@
+{
+    "version": "1.0",
+    "description": "",
+    "interfaces": [ "TZIP-012", "TZIP-016" ],
+    "authors": [ " " ],
+    "homepage": "https://github.com/StableTechnologies/BTCtz",
+    "source": { "tools": [ "SmartPy" ], "location": "https://github.com/StableTechnologies/BTCtz.git" },
+    "permissions": { "operator": "owner-or-operator-transfer", "receiver": "owner-no-hook", "sender": "owner-no-hook" }
+  }
