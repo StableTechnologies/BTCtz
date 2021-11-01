@@ -501,16 +501,17 @@ def test():
     scenario.show([admin, alice, bob, cindy])
 
     scenario.h2("Contract")
-    metadata = { "" : sp.utils.bytes_of_string("ipfs://QmPCcZe6mH6qcx9jrkH3khBe9MGbjUggaP9rL5Pme8NQWh") }
+    metadata = { "" : sp.utils.bytes_of_string("ipfs://QmNTnxYSauFQhKoKmHXCUs2XSBSnoTZWtSiqKwBoodEFjR") }
     token = AdministrableFA2({ LedgerKey.make(0, admin.address): sp.unit }, metadata)
     scenario += token
 
     scenario.h2("Token Metadata")
     token_info = token_info=sp.map({
-        "" : sp.utils.bytes_of_string("ipfs://QmQMWgwv1BnFG46JVhwFyiSwudPaaNRh3nFqvT9Wab3qLV"),
+        "" : sp.utils.bytes_of_string("ipfs://QmNyrZ5LfhoKPYdVKmWHEiyv8jVN5fWn9KhgbCkahjYS94"),
         "symbol": sp.utils.bytes_of_string("BTCtz"),
-        "name": sp.utils.bytes_of_string("BitcoinTez"),
-        "decimals": sp.utils.bytes_of_string("8")
+        "name": sp.utils.bytes_of_string("BTCtez"),
+        "decimals": sp.utils.bytes_of_string("8"),
+        "thumbnailUri": sp.utils.bytes_of_string("ipfs://QmfAJX4A534cpp2XjDGSM8b8PrqnSt8b7ytuteY8MXkBPD")
         }, tkey = sp.TString, tvalue = sp.TBytes)
     token_metadata = sp.record(token_id=sp.nat(0), token_info=token_info)
     scenario += token.set_token_metadata(token_metadata).run(sender=admin)

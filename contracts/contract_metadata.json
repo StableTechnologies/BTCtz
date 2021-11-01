@@ -1,9 +1,9 @@
 {
     "version": "1.0",
-    "description": "",
-    "interfaces": [ "TZIP-012", "TZIP-016" ],
-    "authors": [ " " ],
-    "homepage": "https://github.com/StableTechnologies/BTCtz",
+    "description": "BTCtez is Bitcoin wrapped as a Tezos FA (Financial Asset) standard token",
+    "interfaces": [ "TZIP-012", "TZIP-016", "TZIP-021" ],
+    "authors": [ "Tezos Stable Technologies" ],
+    "homepage": "https://btctz.io",
     "source": { "tools": [ "SmartPy" ], "location": "https://github.com/StableTechnologies/BTCtz.git" },
     "permissions": { "operator": "owner-or-operator-transfer", "receiver": "owner-no-hook", "sender": "owner-no-hook" }
-  }
+}

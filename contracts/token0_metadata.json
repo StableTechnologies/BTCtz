@@ -1,5 +1,7 @@
 {
     "symbol": "BTCtz",
-    "name": "BitcoinTez",
-    "decimals": 8
+    "name": "BTCtez",
+    "decimals": 8,
+    "shouldPreferSymbol": true,
+    "thumbnailUri": "ipfs://QmfAJX4A534cpp2XjDGSM8b8PrqnSt8b7ytuteY8MXkBPD"
 }
