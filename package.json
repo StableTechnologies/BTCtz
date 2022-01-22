@@ -18,7 +18,7 @@
         "conseiljs": "5.0.9-beta.2",
         "conseiljs-softsigner": "5.0.4-1",
         "loglevel": "1.7.1",
-        "node-fetch": "2.6.1"
+        "node-fetch": "3.1.1"
     },
     "devDependencies": {
         "typescript": "4.3.4"
